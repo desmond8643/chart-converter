@@ -17,6 +17,12 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
       }
       parts.push(",")
       currentPart = ""
+    } else if (char === "`") {
+      if (currentPart.length !== 0) {
+        parts.push(currentPart)
+      }
+      parts.push("`")
+      currentPart = ""
     } else {
       currentPart += char
     }
@@ -35,11 +41,17 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
   firstNote()
 
   for (let i = 1; i < parts.length; i++) {
+    const previousNote = parts[i - 1]
     const note = parts[i]
 
     // commas case
-    if (note === ",") {
-      currentDuration += commasDuration
+    if (note === "," || note === "`") {
+      if (note === ",") {
+        currentDuration += commasDuration
+      }
+      if (note === "`") {
+        currentDuration++
+      }
       if (currentDuration > 384) {
         currentDuration -= 384
         currentMeasure++
@@ -48,6 +60,14 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     }
 
     checkCases(note)
+
+    if (previousNote === "`") {
+      currentDuration--
+      if (currentDuration < 0) {
+        currentDuration += 384
+        currentMeasure--
+      }
+    }
   }
 
   ma2.push(["", currentMeasure, currentDuration, "", "", "", "", ""])
@@ -423,7 +443,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     console.log(splitSlide)
 
     const initialNote = parseInt(splitSlide[0]) - 1
-    const endNote = parseInt(splitSlide[1]) - 1
+    const endNote = parseInt(splitSlide[1][1]) - 1
     const slideRhythm = parseInt(splitSlide[2])
     const slideRhythmMultiplier = parseFloat(splitSlide[3])
     const slideDuration = (slideRhythmMultiplier * 384) / slideRhythm
@@ -455,7 +475,9 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
 
     let slideType = ""
     const initialPlus2 = initialNote + 2 > 8 ? initialNote - 6 : initialNote + 2
+    console.log(initialNote, initialPlus2)
     const middleNote = parseInt(splitSlide[1][0]) - 1
+    console.log(initialNote, initialPlus2, middleNote)
 
     slideType = initialPlus2 === middleNote ? "SLR" : "SLL"
 
@@ -641,10 +663,12 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
   function handleSSCase(note, tap, str, breakTap, exTap, slideDirection) {
     const splitSlide = note
       .replace("s", ":")
+      .replace("z", ":")
       .replace("[", ":")
       .replace("]", "")
       .split(":")
 
+    console.log(splitSlide)
     const initialNote = parseInt(splitSlide[0].match(/\d+/)[0]) - 1
     const endNote = parseInt(splitSlide[1]) - 1
     const slideRhythm = parseInt(splitSlide[2])
@@ -829,9 +853,10 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     // 5v4-1[4:1]
     // 4<8pp3[8:11]
     // 1bV35V71[4:27]
+    // 1bxs5b[4:1]`8xz4[4:1]
     for (let i = 1; i < note.length - 1; i++) {
       if (pattern.test(note[i])) {
-        const tap = i - 1 === 0 || i - 2 === 0 ? true : false
+        const tap = i - 1 === 0 || i - 2 === 0 || i - 3 === 0 ? true : false
         console.log(tap)
         let slideNotation = note[i]
         // special case
@@ -841,19 +866,23 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
         if (note[i] + note[i + 1] === "qq") {
           slideNotation = "qq"
         }
-        let slideNote = tap && specialTap
-          ? note[i - 2] + note[i - 1] + slideNotation
-          : note[i - 1] + slideNotation
-          console.log(note[i - 1])
+        let slideNote =
+          breakTap && exTap
+            ? note[i - 3] + note[i - 2] + note[i - 1] + slideNotation
+            : breakTap || exTap
+            ? note[i - 2] + note[i - 1] + slideNotation
+            : note[i - 1] + slideNotation
+        console.log(note[i - 1])
 
         slideNote +=
           slideNotation === "-" ||
           slideNotation === "^" ||
           slideNotation === "v" ||
           slideNotation === "<" ||
-          slideNotation === ">"
+          slideNotation === ">" ||
+          slideNotation === "z"
             ? note[i + 1]
-            : note[i + 2]
+            : note[i + 1] + note[i + 2]
         slideNote += `[${rhythm}:${parseInt(
           splitSlide[splitSlide.length - 1]
         )}]`
@@ -913,7 +942,12 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     }
 
     // touch case
-    if (note.includes("A") || note.includes("B") || note.includes("E")) {
+    if (
+      note.includes("A") ||
+      note.includes("B") ||
+      note.includes("D") ||
+      note.includes("E")
+    ) {
       handleTouchCase(note)
       return
     }
@@ -963,6 +997,10 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     }
     if (note.includes("s")) {
       handleSSCase(note, tap, str, breakTap, exTap, "SSL")
+      return
+    }
+    if (note.includes("z")) {
+      handleSSCase(note, tap, str, breakTap, exTap, "SSR")
       return
     }
     if (note.includes("q")) {
