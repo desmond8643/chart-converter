@@ -42,8 +42,8 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
 
   for (let i = 1; i < parts.length; i++) {
     const previousNote = parts[i - 1]
-    const note = parts[i]
-
+    const note = parts[i] 
+    console.log(note)
     // commas case
     if (note === "," || note === "`") {
       if (note === ",") {
@@ -494,9 +494,10 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
 
     ma2.push(slideNote)
   }
-  function handleSXLCase(note, tap) {
+  function handleSXCase(note, tap, slideDirection) {
     const splitSlide = note
       .replace("pp", ":")
+      .replace("qq", ":")
       .replace("[", ":")
       .replace("]", "")
       .split(":")
@@ -536,7 +537,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
       : "CN"
 
     const slideNote = [
-      slideProperty + "SXL",
+      slideProperty + slideDirection,
       currentMeasure,
       tap ? currentDuration : "slide delay time",
       initialNote,
@@ -793,9 +794,32 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     return pattern.test(note)
   }
   function checkLongSlide(note) {
-    const pattern = /[-^><Vpqsz]|pp|qq|w/g
+    const ppRegex = new RegExp("pp", 'g')
+    const ppMatches = note.match(ppRegex)
+    const countpp = ppMatches ? ppMatches.length : 0
+
+    const qqRegex = new RegExp("qq", 'g')
+    const qqMatches = note.match(qqRegex)
+    const countqq = qqMatches ? qqMatches.length : 0
+    
+    const pRegex = new RegExp("p", 'g')
+    const pMatches = note.match(pRegex)
+    let countp = pMatches ? pMatches.length : 0
+
+    const qRegex = new RegExp("q", "g")
+    const qMatches = note.match(qRegex)
+    let countq = qMatches ? qMatches.length : 0
+
+    countp -= 2 * countpp
+    countq -= 2 * countqq
+
+    const pattern = /[-^><Vvszw]/g
     const matches = note.match(pattern)
-    return matches && matches.length >= 2
+    const count = matches ? matches.length : 0
+
+    const total = countpp + countqq + countp + countq + count
+    console.log(countpp, countqq, countp, countq, count)
+    return total >= 2
   }
 
   function checkAsteriskCase(note) {
@@ -880,7 +904,8 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
           slideNotation === "v" ||
           slideNotation === "<" ||
           slideNotation === ">" ||
-          slideNotation === "z"
+          slideNotation === "z" ||
+          slideNotation === "qq"
             ? note[i + 1]
             : note[i + 1] + note[i + 2]
         slideNote += `[${rhythm}:${parseInt(
@@ -902,7 +927,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
           handleSVCase(slideNote, tap, str)
         }
         if (slideNotation === "pp") {
-          handleSXLCase(slideNote, tap)
+          handleSXCase(slideNote, tap, "SXL")
         }
         if (slideNotation === "<") {
           handleSCLCase(slideNote, tap, str, breakTap, exTap)
@@ -979,6 +1004,14 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     }
 
     // slide case
+    if (note.includes("pp")) {
+      handleSXCase(note, tap, "SXL")
+      return
+    }
+    if (note.includes("qq")) {
+      handleSXCase(note, tap, "SXR")
+      return
+    }
     if (note.includes(">")) {
       handleSCRCase(note, tap, str, breakTap, exTap)
       return
