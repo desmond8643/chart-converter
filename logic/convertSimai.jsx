@@ -241,11 +241,15 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
       ]
       ma2.push(strNote)
     }
-    let slideNote = ["", "", "", "", "", "", "", ""]
 
-    if (Math.abs(initialNote - endNote) < 4) {
+    const slideType = splitSlide[1].includes("b") ? "BR" : "NM"
+
+    let slideNote = ["", "", "", "", "", "", "", ""]
+    
+    // Math.abs(initialNote - endNote) < 4
+    if (initialNote === "0" || initialNote === "1" || initialNote === "6" || initialNote === "7") {
       slideNote = [
-        "NMSCR",
+        slideType + "SCR",
         currentMeasure,
         currentDuration,
         initialNote,
@@ -256,7 +260,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
       ]
     } else {
       slideNote = [
-        "NMSCL",
+        slideType + "SCL",
         currentMeasure,
         currentDuration,
         initialNote,
@@ -414,7 +418,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     }
 
     const slideProperty = tap
-      ? splitSlide[3].includes("b") || breakSlide
+      ? splitSlide[3].includes("b") || splitSlide[1].includes("b") ||breakSlide
         ? "BR"
         : "NM"
       : "CN"
@@ -549,13 +553,14 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
 
     ma2.push(slideNote)
   }
-  function handleSURCase(note, tap, str, breakTap, exTap) {
+  function handleSUCase(note, tap, str, breakTap, exTap, slideDirection) {
     const splitSlide = note
       .replace("q", ":")
+      .replace("p", ":")
       .replace("[", ":")
       .replace("]", "")
       .split(":")
-
+console.log(splitSlide)
     const initialNote = parseInt(splitSlide[0].match(/\d+/)[0]) - 1
     const endNote = parseInt(splitSlide[1]) - 1
     const slideRhythm = parseInt(splitSlide[2])
@@ -586,13 +591,13 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     }
 
     const slideProperty = tap
-      ? splitSlide[3].includes("b")
+      ? splitSlide[3].includes("b") || splitSlide[1].includes("b")
         ? "BR"
         : "NM"
       : "CN"
 
     const slideNote = [
-      slideProperty + "SUR",
+      slideProperty + slideDirection,
       currentMeasure,
       tap ? currentDuration : "slide delay time",
       initialNote,
@@ -1039,7 +1044,11 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
       return
     }
     if (note.includes("q")) {
-      handleSURCase(note, tap, str, breakTap, exTap)
+      handleSUCase(note, tap, str, breakTap, exTap, "SUR")
+      return
+    }
+    if (note.includes("p")) {
+      handleSUCase(note, tap, str, breakTap, exTap, "SUL")
       return
     }
     if (note.includes("w")) {
