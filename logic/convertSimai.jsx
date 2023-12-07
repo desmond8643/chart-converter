@@ -375,14 +375,14 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
 
     ma2.push(slideNote)
   }
-  function handleSICase(note, tap, str, breakTap, exTap) {
+  function handleSICase(note, tap, str, breakTap, exTap, breakSlide) {
     console.log(tap, str)
     const splitSlide = note
       .replace("-", ":")
       .replace("[", ":")
       .replace("]", "")
       .split(":")
-
+    console.log(splitSlide)
     const initialNote = parseInt(splitSlide[0].match(/\d+/)[0]) - 1
     const endNote = parseInt(splitSlide[1]) - 1
     const slideRhythm = parseInt(splitSlide[2])
@@ -414,7 +414,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     }
 
     const slideProperty = tap
-      ? splitSlide[3].includes("b")
+      ? splitSlide[3].includes("b") || breakSlide
         ? "BR"
         : "NM"
       : "CN"
@@ -866,6 +866,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
     console.log(splitSlide)
 
     const breakTap = note[1] === "b" || note[2] === "b" ? true : false
+    let breakSlide = splitSlide[splitSlide.length - 3].includes("b") // only set for first slide
     const exTap = note[1] === "x" || note[2] === "x" ? true : false
     const specialTap = note[1] === "b" || note[1] === "x" ? true : false
     const slideBreak = splitSlide[splitSlide.length - 1].includes("b")
@@ -890,13 +891,13 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
         if (note[i] + note[i + 1] === "qq") {
           slideNotation = "qq"
         }
+        
         let slideNote =
-          breakTap && exTap
+          breakTap && exTap && tap
             ? note[i - 3] + note[i - 2] + note[i - 1] + slideNotation
-            : breakTap || exTap
+            : breakTap || exTap && tap
             ? note[i - 2] + note[i - 1] + slideNotation
             : note[i - 1] + slideNotation
-        console.log(note[i - 1])
 
         slideNote +=
           slideNotation === "-" ||
@@ -915,7 +916,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
         console.log(slideNote)
 
         if (slideNotation === "-") {
-          handleSICase(slideNote, tap, str)
+          handleSICase(slideNote, tap, str, breakTap, exTap, breakSlide)
         }
         if (slideNotation === "V") {
           handleSLCase(slideNote, tap, str)
@@ -938,6 +939,7 @@ export default function ConvertSimai(rhythm, measure, duration, maidata) {
         if (slideNotation === "s") {
           handleSSCase(slideNote, tap, str, breakTap, exTap, "SSL")
         }
+        breakSlide = false // only true for once
       }
     }
   }
